@@ -1,4 +1,4 @@
-#include <PCM.h>
+#include "PCM.h"
 #include "printf.h"
 
 const unsigned char sample[] PROGMEM = {
@@ -7,29 +7,43 @@ const unsigned char sample[] PROGMEM = {
 
 const int ledPin =  13;      // the number of the LED pin
 const int motionSensorPin = 2;
-const int motionLedPin = 3;
+const int motionLedTardisPin1 = 5;
+const int motionLedTardisPin2 = 6;
+const int motionLedTardisPin = 7;
 
 int ledState = HIGH;             // ledState used to set the LED
 
 unsigned long previousMillis = 0;        // will store last time LED was updated
 
 int previousMotion = 0;
-unsigned long  previousPlayback = 1000;
+unsigned long  previousPlayback = 0;
 int playbackCount = 0;
 
 const long interval = 500;           // interval at which to blink (milliseconds)
+
+int tardisBrightnessStart1;
+int tardisBrightnessEnd1;
+int tardisBrightnessStart2;
+int tardisBrightnessEnd2;
+int brightness1 = 0;
+int brightness2 = 0;
+boolean motionChanged = false;
 
 void setup()
 {
   // set the digital pin as output:
   pinMode(ledPin, OUTPUT);
   pinMode(motionSensorPin, INPUT);
-  pinMode(motionLedPin, OUTPUT);
+  pinMode(motionLedTardisPin1, OUTPUT);
+  pinMode(motionLedTardisPin2, OUTPUT);
+  pinMode(motionLedTardisPin, OUTPUT);
   Serial.begin(57600);
   printf_begin();
   printf("\n\rStarted...\n\r");
  	digitalWrite(ledPin, ledState);
- 	digitalWrite(motionLedPin, 1);
+ 	analogWrite(motionLedTardisPin1, brightness1);
+ 	analogWrite(motionLedTardisPin2, brightness2);
+ 	digitalWrite(motionLedTardisPin, HIGH);
 }
 
 void loop()
@@ -46,20 +60,61 @@ void loop()
     digitalWrite(ledPin, ledState);
   }
   int motion = digitalRead(motionSensorPin);
+  motionChanged = false;
   if(motion != previousMotion){
   	printf("\n\rMotion Changed: %d at %ld\n", motion, currentMillis);
   	previousMotion = motion;
-  	digitalWrite(motionLedPin, !motion);
+		motionChanged = true;
+	 	digitalWrite(motionLedTardisPin, !motion);
   }
+	if(motion && motionChanged){
+		previousPlayback = currentMillis;
+	}
+	unsigned long duration = currentMillis - previousPlayback;
 	if(motion){
-		if( currentMillis - previousPlayback >= 2500 && playbackCount < 10){
-			playbackCount++;
-			printf("Playing Sample: %d\n", playbackCount);
-			startPlayback(sample, sizeof(sample));
+		if(motionChanged || duration >= 2500){
+			if(playbackCount < 10){
+				playbackCount++;
+				printf("Playing Sample: %d\n", playbackCount);
+				startPlayback(sample, sizeof(sample));
+			}
 			previousPlayback = currentMillis;
+			duration = 0;
+			tardisBrightnessStart1 = 0;
+			tardisBrightnessEnd1 = 500;
+			tardisBrightnessStart2 = 0;
+			tardisBrightnessEnd2 = 2000;
 		}
+		if(duration >= 500){
+			tardisBrightnessStart1 = 2500;
+			tardisBrightnessEnd1 = 500;
+		}
+		if(duration >= 2000){
+			tardisBrightnessStart2 = 2500;
+			tardisBrightnessEnd2 = 2000;
+		}
+		brightness1 = map(duration, tardisBrightnessStart1, tardisBrightnessEnd1, 0, 255);
+		if(duration < 800){
+			brightness2 = map(duration, 0, 800, 0, 50);
+		} else if(duration < 1500){
+			brightness2 = map(duration, 800, 1500, 50, 190);
+		} else{
+			brightness2 = map(duration, tardisBrightnessStart2, tardisBrightnessEnd2, 0, 255);
+		}
+		printf("Brightnesses: %d, %d\n", brightness1, brightness2);
+  	analogWrite(motionLedTardisPin1, brightness1);
+  	analogWrite(motionLedTardisPin2, brightness2);
 	} else {
 		playbackCount = 0;
+		if(brightness1 > 0){
+			brightness1--;
+		}
+		if(brightness2 > 0){
+			brightness2--;
+		}
+  	analogWrite(motionLedTardisPin1, brightness1);
+  	analogWrite(motionLedTardisPin2, brightness2);
+  	delay(20);
 	}
 }
 

@@ -62,6 +62,10 @@
  * (starfox) nb. under sox 12.18 (distributed in CentOS 5), i needed to run
  * the following command to convert my wav file to the appropriate format:
  * sox audiodump.wav -c 1 -r 8000 -u -b macstartup-8000.wav
+ * 
+ * See http://highlowtech.org/?p=1963
+ * 
+ * This breaks PWM on 3, 9, 10. It uses pin 11.
  */
 
 int speakerPin = 11;
