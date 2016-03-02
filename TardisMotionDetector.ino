@@ -14,6 +14,7 @@ const int motionLedTardisPin = 7;
 int ledState = HIGH;             // ledState used to set the LED
 
 unsigned long previousMillis = 0;        // will store last time LED was updated
+unsigned long previousMotionStartMillis = 0;
 
 int previousMotion = 0;
 unsigned long  previousPlayback = 0;
@@ -43,7 +44,7 @@ void setup()
  	digitalWrite(ledPin, ledState);
  	analogWrite(motionLedTardisPin1, brightness1);
  	analogWrite(motionLedTardisPin2, brightness2);
- 	digitalWrite(motionLedTardisPin, HIGH);
+ 	digitalWrite(motionLedTardisPin, LOW);
 }
 
 void loop()
@@ -65,11 +66,16 @@ void loop()
   	printf("\n\rMotion Changed: %d at %ld\n", motion, currentMillis);
   	previousMotion = motion;
 		motionChanged = true;
-	 	digitalWrite(motionLedTardisPin, !motion);
   }
 	if(motion && motionChanged){
 		previousPlayback = currentMillis;
+		previousMotionStartMillis = currentMillis;
 	}
+	int mainLed = LOW;
+	if(motion || (currentMillis - previousMotionStartMillis < 30000)){
+		mainLed = HIGH;
+	} 
+ 	digitalWrite(motionLedTardisPin, mainLed);
 	unsigned long duration = currentMillis - previousPlayback;
 	if(motion){
 		if(motionChanged || duration >= 2500){
